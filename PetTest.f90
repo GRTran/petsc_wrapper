@@ -63,6 +63,8 @@ CONTAINS
       !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       !! Copy the vector and print, then duplicate the same vector and print
       !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+      call vec(3)%petscCreateVec( n )
+      call vec(4)%petscCreateVec( n )
       call vec(3)%petscCopyVec( vec(1) )
       call vec(3)%petscViewVec()
       call vec(4)%petscDupeVec( vec(1) )

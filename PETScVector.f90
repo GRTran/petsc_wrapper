@@ -73,7 +73,7 @@ CONTAINS
   END SUBROUTINE
 
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  !! Copies a vector to another with the same size but does not copy the values
+  !! Copies a vector and the contents of elements to a new location in memory
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   SUBROUTINE petscCopyVec ( this, vec_in )
     CLASS(PETScVectorClass), INTENT( INOUT )   ::    this
@@ -86,7 +86,8 @@ CONTAINS
   END SUBROUTINE
 
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  !! Copies a vector to another with the same size but does not copy the values
+  !! Allocates memory for a new vector of the same size as the input vector,
+  !! values within elements are not copied across 
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   SUBROUTINE petscDupeVec ( this, vec_in )
     CLASS(PETScVectorClass), INTENT( INOUT )   ::    this
