@@ -1,3 +1,26 @@
+!! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - !!
+!! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - !!
+!! Title:   PETSc vector wrapper for fortran                Date: 08/05/2019 !!
+!! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - !!
+!! Description: This module contains all the necessary include and use       !!
+!!              statements for an interface between the PETSc library and    !!
+!!              other code that is written that uses it. The following class !!
+!!              stores a single PETSc vector type, and performs a range of   !!
+!!              operations on the allocated sections of the memory that      !!
+!!              represent the vector. Information about each procedure can   !!
+!!              found above where it is declared.                            !!
+!! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - !!
+!! Dependencies: The PETSc c++ headers that link to library files, and their !!
+!!               Fortran counterparts.                                       !!
+!! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - !!
+!! Revision: 1.0 (08/05/2019)                                                !!
+!!           Original functionality implemented in wrapper includes the      !!
+!!           creation and destruction operations of the vector (both must be !!
+!!           used), copy and duplication features. Setting elements of the   !!
+!!           vector, printing the vector and performing the dot product      !!
+!!           between two vectors.                                            !!
+!! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - !!
+!! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - !!
 MODULE PETScVector
 
 #include <petsc/finclude/petscsys.h>
@@ -87,7 +110,7 @@ CONTAINS
 
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   !! Allocates memory for a new vector of the same size as the input vector,
-  !! values within elements are not copied across 
+  !! values within elements are not copied across
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   SUBROUTINE petscDupeVec ( this, vec_in )
     CLASS(PETScVectorClass), INTENT( INOUT )   ::    this

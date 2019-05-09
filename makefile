@@ -3,10 +3,16 @@ FC=mpif90
 CC=mpicc
 LD=mpif90
 
+#Set different compiler options for when at home
+home:	FC=gfortran
+home: CC=gcc
+home: LD=gfortran
+
 
 
 #Set the objects
-OBJS=																PETScVector.o								\
+OBJS=																PETScVector.o															\
+																		PETScMatrix.o															\
 																		PetTest.o
 
 
@@ -17,7 +23,7 @@ OBJS=																PETScVector.o								\
 # MY_OPTIONS    =           -ffree-line-length-800 -o3
 FC_FLAGS    =           -fcheck=bounds -ffree-line-length-800 -pg -g
 FC_FLAGS_DEBUG = -fimplicit-none -fbounds-check -ffree-line-length-0 -fcheck=all -fbacktrace -g -DDEBUG
-FC_FLAGS_HOME = -fbounds-check -ffree-line-length-0 -O2 -DHOME
+FC_FLAGS_HOME = -fbounds-check -ffree-line-length-0 -pg -DHOME
 
 debug:	FC_FLAGS = $(FC_FLAGS_DEBUG)
 home:		FC_FLAGS = $(FC_FLAGS_HOME)
@@ -46,7 +52,7 @@ PETSC_LINK_PATH = -L$(PETSC_DIR)/lib/
 PETSC_LOAD_PATH = -Wl,-rpath=$(PETSC_DIR)/lib/
 PETSC_LOAD_PATH_HOME= -L$(PETSC_DIR)/lib/
 
-home:	PETSC_LOAD_PATH = $(PETSC_LOAD_PATH_HOME)
+# home:	PETSC_LOAD_PATH = $(PETSC_LOAD_PATH_HOME)
 
 PETSC_LIB = -lpetsc
 
@@ -101,4 +107,4 @@ $(EXEC): $(OBJS)
 #Clean the directory and any directories searched
 .PHONY : clean
 clean :
-	rm -rf $(OBJS) $(EXEC) $(MODS)
+	rm -rf $(OBJS) $(EXEC) $(MODS) *.o *.mod
