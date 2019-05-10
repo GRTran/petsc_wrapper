@@ -19,6 +19,9 @@
 !!           used), copy and duplication features. Setting elements of the   !!
 !!           vector, printing the vector and performing the dot product      !!
 !!           between two vectors.                                            !!
+!!           1.01 (10/05/2019)                                               !!
+!!           Adjustment for the zero-indexed nature of C++ language that     !!
+!!           petsc has been written in.                                      !!
 !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - !!
 !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - !!
 MODULE PETScVector
@@ -34,7 +37,7 @@ MODULE PETScVector
   TYPE PETScVectorClass
     TYPE( tVec )    ::    vec
   CONTAINS
-    PROCEDURE, PUBLIC , PASS   ::    petscInit
+    PROCEDURE, PUBLIC , PASS   ::    petscInit => petscInitFV
     PROCEDURE, PUBLIC , PASS   ::    petscCreateVec
     PROCEDURE, PUBLIC , PASS   ::    petscCopyVec
     PROCEDURE, PUBLIC , PASS   ::    petscDupeVec
@@ -49,7 +52,7 @@ MODULE PETScVector
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   !! Declare any required parameters for the module
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  INTEGER, PARAMETER    ::    pres = selected_real_kind(8)
+  INTEGER, PRIVATE, PARAMETER    ::    pres = selected_real_kind(8)
 
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   !! Declare any required subroutine interfaces
@@ -69,7 +72,7 @@ CONTAINS
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   !! Initialise PETSc to be used
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  SUBROUTINE petscInit( this )
+  SUBROUTINE petscInitFV( this )
     CLASS(PETScVectorClass)   ::    this
     PetscErrorCode                  ierr
 
@@ -96,28 +99,36 @@ CONTAINS
   END SUBROUTINE
 
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  !! Copies a vector and the contents of elements to a new location in memory
+  !! Copies a vector and the contents of elements to a new location in memory.
+  !! The new vector is created within the copy class, no need to do it externally
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   SUBROUTINE petscCopyVec ( this, vec_in )
     CLASS(PETScVectorClass), INTENT( INOUT )   ::    this
     TYPE(PETScVectorClass) , INTENT( IN )      ::    vec_in
+    INTEGER                                    ::    n
     PetscErrorCode                                   ierr
 
     ASSOCIATE ( copy => this%vec, vec => vec_in%vec )
+      call VecGetSize( vec, n, ierr ); CHKERRA( ierr )
+      call petscCreateVec( this, n )
       call VecCopy( vec, copy, ierr ); CHKERRA(ierr)
     END ASSOCIATE
   END SUBROUTINE
 
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   !! Allocates memory for a new vector of the same size as the input vector,
-  !! values within elements are not copied across
+  !! values within elements are not copied across. The new vector is created
+  !! within the duplicate class, no need to do it externally.
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   SUBROUTINE petscDupeVec ( this, vec_in )
     CLASS(PETScVectorClass), INTENT( INOUT )   ::    this
     TYPE(PETScVectorClass) , INTENT( IN )      ::    vec_in
+    INTEGER                                    ::    n
     PetscErrorCode                                   ierr
 
     ASSOCIATE ( dupe => this%vec, vec => vec_in%vec )
+      call VecGetSize( vec, n, ierr ); CHKERRA( ierr )
+      call petscCreateVec( this, n )
       call VecDuplicate( vec, dupe, ierr ); CHKERRA(ierr)
     END ASSOCIATE
   END SUBROUTINE
@@ -125,19 +136,20 @@ CONTAINS
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   !! Insert array of values (v) to a vector at indices array locations (i)
   !! or add values (v) to values already in the inidices array locations (i)
+  !! adjustment is carried out for the zero-indexed nature of C
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   SUBROUTINE petscSetVecVals ( this, i, v, c )
     CLASS(PETScVectorClass)            ::    this
-    INTEGER         , INTENT( IN )     ::    i( : )
+    INTEGER                            ::    i( : )
     REAL(KIND=pres) , INTENT( IN )     ::    v( : )
     CHARACTER(LEN=*), INTENT( IN )     ::    c
     PetscErrorCode                          ierr
 
     ASSOCIATE ( vec => this%vec )
       if ( c == 'insert' ) then
-        call VecSetValues( vec, size(i), i, v, INSERT_VALUES, ierr ); CHKERRA(ierr)
+        call VecSetValues( vec, size(i), i-1, v, INSERT_VALUES, ierr ); CHKERRA(ierr)
       elseif ( c == 'add' ) then
-        call VecSetValues( vec, size(i), i, v, ADD_VALUES, ierr ); CHKERRA(ierr)
+        call VecSetValues( vec, size(i), i-1, v, ADD_VALUES, ierr ); CHKERRA(ierr)
       else
         stop 'Error petscSetVecVal(): incorrect chatacter input argument (add/insert)'
       end if
@@ -147,19 +159,20 @@ CONTAINS
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   !! Insert value (v) to a vector at index (i)
   !! or add value (v) to value already within cell at index (i)
+  !! adjustment is carried out for the zero-indexed nature of C
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   SUBROUTINE petscSetVecVal ( this, i, v, c )
     CLASS(PETScVectorClass)            ::    this
-    INTEGER         , INTENT( IN )     ::    i
+    INTEGER                            ::    i
     REAL(KIND=pres) , INTENT( IN )     ::    v
     CHARACTER(LEN=*), INTENT( IN )     ::    c
     PetscErrorCode                          ierr
 
     ASSOCIATE ( vec => this%vec )
       if ( c == 'insert' ) then
-        call VecSetValue( vec, i, v, INSERT_VALUES, ierr ); CHKERRA(ierr)
+        call VecSetValue( vec, i-1, v, INSERT_VALUES, ierr ); CHKERRA(ierr)
       elseif ( c == 'add' ) then
-        call VecSetValue( vec, i, v, ADD_VALUES, ierr ); CHKERRA(ierr)
+        call VecSetValue( vec, i-1, v, ADD_VALUES, ierr ); CHKERRA(ierr)
       else
         stop 'Error petscSetVecVal(): incorrect chatacter input argument (add/insert)'
       end if
@@ -179,28 +192,6 @@ CONTAINS
         call VecSet( vec, v, ierr ); CHKERRA(ierr)
     END ASSOCIATE
   END SUBROUTINE
-
-  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -!!
-  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -!!
-  !!                      Perform vector operations                         !!
-  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -!!
-  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -!!
-
-  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  !! Perform the dot product between two vectors, no pass specified so input
-  !! both of the vectors
-  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  FUNCTION petscVecDot ( x, y ) RESULT ( val_out )
-    CLASS(PETScVectorClass)   ::    x, y
-    PetscReal                       dot
-    REAL(KIND=pres)           ::    val_out
-    PetscErrorCode                  ierr
-
-    ASSOCIATE ( x_vec => x%vec , y_vec => y%vec )
-      call VecDot( x_vec, y_vec, dot, ierr ); CHKERRA(ierr)
-    END ASSOCIATE
-    val_out = dot
-  END FUNCTION
 
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   !! View the PETSc vector
@@ -225,5 +216,27 @@ CONTAINS
       call VecDestroy( vec, ierr ); CHKERRA(ierr)
     END ASSOCIATE
   END SUBROUTINE
+
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -!!
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -!!
+  !!                      Perform vector operations                         !!
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -!!
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -!!
+
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  !! Perform the dot product between two vectors, no pass specified so input
+  !! both of the vectors
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  FUNCTION petscVecDot ( x, y ) RESULT ( val_out )
+    CLASS(PETScVectorClass)   ::    x, y
+    PetscReal                       dot
+    REAL(KIND=pres)           ::    val_out
+    PetscErrorCode                  ierr
+
+    ASSOCIATE ( x_vec => x%vec , y_vec => y%vec )
+      call VecDot( x_vec, y_vec, dot, ierr ); CHKERRA(ierr)
+    END ASSOCIATE
+    val_out = dot
+  END FUNCTION
 
 END MODULE

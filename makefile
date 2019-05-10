@@ -13,6 +13,7 @@ home: LD=gfortran
 #Set the objects
 OBJS=																PETScVector.o															\
 																		PETScMatrix.o															\
+																		PETScNumMethods.o													\
 																		PetTest.o
 
 
