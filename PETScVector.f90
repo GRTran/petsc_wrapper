@@ -22,6 +22,9 @@
 !!           1.01 (10/05/2019)                                               !!
 !!           Adjustment for the zero-indexed nature of C++ language that     !!
 !!           petsc has been written in.                                      !!
+!!           1.1 (28/05/2019)                                                !!
+!!           Procedures added to get individual or array of vector values.   !!
+!!           Also added feature to get the global vector size                !!
 !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - !!
 !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - !!
 MODULE PETScVector
@@ -44,6 +47,9 @@ MODULE PETScVector
     PROCEDURE, PUBLIC , PASS   ::    petscViewVec
     GENERIC  , PUBLIC          ::    petscSetVec => petscSetVecVals, petscSetVecVal
     PROCEDURE, PRIVATE, PASS   ::    petscSetVecVals, petscSetVecVal
+    GENERIC  , PUBLIC          ::    petscGetVec => petscGetVecVals, petscGetVecVal, petscGetVecValsFromSE
+    PROCEDURE, PRIVATE, PASS   ::    petscGetVecVals, petscGetVecVal, petscGetVecValsFromSE
+    PROCEDURE, PUBLIC,  PASS   ::    petscGetSize
     PROCEDURE, PUBLIC , PASS   ::    petscSetVecAll
     PROCEDURE, PUBLIC , PASS   ::    petscDestroyVec
     PROCEDURE, PUBLIC , NOPASS ::    petscVecDot
@@ -84,7 +90,7 @@ CONTAINS
   END SUBROUTINE
 
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  !! Create an empty PETSc vector, of unknown size
+  !! Create an empty PETSc vector, of size n
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   SUBROUTINE petscCreateVec ( this, n )
     CLASS(PETScVectorClass)   ::    this
@@ -143,7 +149,7 @@ CONTAINS
     INTEGER                            ::    i( : )
     REAL(KIND=pres) , INTENT( IN )     ::    v( : )
     CHARACTER(LEN=*), INTENT( IN )     ::    c
-    PetscErrorCode                          ierr
+    PetscErrorCode                           ierr
 
     ASSOCIATE ( vec => this%vec )
       if ( c == 'insert' ) then
@@ -166,7 +172,7 @@ CONTAINS
     INTEGER                            ::    i
     REAL(KIND=pres) , INTENT( IN )     ::    v
     CHARACTER(LEN=*), INTENT( IN )     ::    c
-    PetscErrorCode                          ierr
+    PetscErrorCode                           ierr
 
     ASSOCIATE ( vec => this%vec )
       if ( c == 'insert' ) then
@@ -186,10 +192,85 @@ CONTAINS
   SUBROUTINE petscSetVecAll ( this, v )
     CLASS(PETScVectorClass)            ::    this
     REAL(KIND=pres) , INTENT( IN )     ::    v
-    PetscErrorCode                          ierr
+    PetscErrorCode                           ierr
 
     ASSOCIATE ( vec => this%vec )
         call VecSet( vec, v, ierr ); CHKERRA(ierr)
+    END ASSOCIATE
+  END SUBROUTINE
+
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  !! Get a single (ni) element of vector (v) from index locations (ix)
+  !! and store array in output (y)
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  SUBROUTINE petscGetVecVal ( this, ni, i, y )
+    CLASS(PETScVectorClass)            ::    this
+    REAL(KIND=pres) , INTENT( OUT )    ::    y
+    INTEGER         , INTENT( IN )     ::    ni
+    INTEGER         , INTENT( IN )     ::    i
+    PetscErrorCode                           ierr
+
+    ASSOCIATE ( vec => this%vec )
+        call VecGetValues( vec, ni, (/ i-1 /), (/ y /), ierr ); CHKERRA(ierr)
+    END ASSOCIATE
+  END SUBROUTINE
+
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  !! Get a number (ni) of elements of vector from index locations (ix)
+  !! and store array in output (y)
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  SUBROUTINE petscGetVecVals ( this, ni, i, y )
+    CLASS(PETScVectorClass)            ::    this
+    REAL(KIND=pres) , INTENT( OUT )    ::    y( : )
+    INTEGER         , INTENT( IN )     ::    ni
+    INTEGER         , INTENT( IN )     ::    i( : )
+    PetscErrorCode                           ierr
+
+    ASSOCIATE ( vec => this%vec )
+        call VecGetValues( vec, ni, i-1, y, ierr ); CHKERRA(ierr)
+    END ASSOCIATE
+  END SUBROUTINE
+
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  !! Get elements using the difference between the end (e) and start (s)
+  !! indices store array in output (y)
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  SUBROUTINE petscGetVecValsFromSE ( this, start, end, y )
+    CLASS(PETScVectorClass)            ::    this
+    REAL(KIND=pres) , INTENT( OUT )    ::    y( : )
+    INTEGER         , INTENT( IN )     ::    start
+    INTEGER         , INTENT( IN )     ::    end
+    INTEGER                            ::    i
+    INTEGER                            ::    ni
+    INTEGER, ALLOCATABLE               ::    indices( : )
+    PetscErrorCode                           ierr
+
+    ni = end-start+1
+    ALLOCATE( indices(ni) )
+
+    !! adjustments are made for zero indexed nature of PETSc library
+    indices(1) = start - 1
+    do i = 2, ni
+      indices(i) = indices(i-1) + 1
+    enddo
+
+    ASSOCIATE ( vec => this%vec )
+        call VecGetValues( vec, ni, indices, y, ierr ); CHKERRA(ierr)
+    END ASSOCIATE
+
+    DEALLOCATE( indices )
+  END SUBROUTINE
+
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  !! Gets the size (s) of a vector
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  SUBROUTINE petscGetSize ( this, s )
+    CLASS(PETScVectorClass)            ::    this
+    INTEGER         , INTENT( OUT )    ::    s
+    PetscErrorCode                           ierr
+
+    ASSOCIATE ( vec => this%vec )
+        call VecGetSize( vec, s, ierr ); CHKERRA(ierr)
     END ASSOCIATE
   END SUBROUTINE
 

@@ -42,6 +42,8 @@ MODULE PETScMatrix
     PROCEDURE, PUBLIC , PASS   ::    petscCreateMat
     PROCEDURE, PUBLIC , PASS   ::    petscDupeMat
     PROCEDURE, PUBLIC , PASS   ::    petscCopyMat
+    PROCEDURE, PUBLIC , PASS   ::    petscGetMatRowVals
+    PROCEDURE, PUBLIC , PASS   ::    petscRestoreMatRowVals
     GENERIC  , PUBLIC          ::    petscSetMatVals => petscSetMatRowVals, petscSetMatValsFromMat, petscSetMatRowVal
     PROCEDURE, PRIVATE, PASS   ::    petscSetMatRowVals
     PROCEDURE, PRIVATE, PASS   ::    petscSetMatValsFromMat
@@ -192,6 +194,40 @@ CONTAINS
       enddo
     enddo
     call insertValsToMatrix( this, irows, icols, tvals, c )
+  END SUBROUTINE
+
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  !! Gets a row from the populated PETSc matrix
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  SUBROUTINE petscGetMatRowVals ( this, idx, nzprow, cols, vals )
+    CLASS(PETScMatrixClass)            ::    this
+    INTEGER                            ::    idx
+    INTEGER                            ::    nzprow
+    INTEGER                            ::    cols( : )
+    REAL(KIND=pres) , INTENT( IN )     ::    vals( : )
+    PetscErrorCode                           ierr
+
+    ASSOCIATE ( mat => this%mat )
+        call MatGetRow( mat, idx-1, nzprow, cols, vals, ierr ); CHKERRA(ierr)
+        call MatRestoreRow( mat, idx, nzprow, cols, vals, ierr ); CHKERRA(ierr)
+    END ASSOCIATE
+  END SUBROUTINE
+
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  !! Restores the row once it has been inspected, this must be called after
+  !! getting a particular row
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  SUBROUTINE petscRestoreMatRowVals ( this, idx, nzprow, cols, vals )
+    CLASS(PETScMatrixClass)            ::    this
+    INTEGER                            ::    idx
+    INTEGER                            ::    nzprow
+    INTEGER                            ::    cols( : )
+    REAL(KIND=pres) , INTENT( IN )     ::    vals( : )
+    PetscErrorCode                           ierr
+
+    ASSOCIATE ( mat => this%mat )
+        call MatRestoreRow( mat, idx, nzprow, cols, vals, ierr ); CHKERRA(ierr)
+    END ASSOCIATE
   END SUBROUTINE
 
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
