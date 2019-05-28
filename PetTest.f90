@@ -1,6 +1,5 @@
 PROGRAM PetTest
-  USE PETScVector
-  USE PETScMatrix
+  USE PETScUseAll
 
 
   IMPLICIT NONE

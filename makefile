@@ -14,6 +14,7 @@ home: LD=gfortran
 OBJS=																PETScVector.o															\
 																		PETScMatrix.o															\
 																		PETScNumMethods.o													\
+																		PETScUseAll.o	     												\
 																		PetTest.o
 
 
