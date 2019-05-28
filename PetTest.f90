@@ -9,6 +9,7 @@ PROGRAM PetTest
 
   call PETScVectorClassTest( vec )
   call PETScMatrixClassTest( mat )
+  call KSPTest( mat(1), vec )
 
 CONTAINS
 
@@ -54,7 +55,7 @@ CONTAINS
       !! create and set a second vector and perform the dot product between the two
       !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       call vec(2)%petscCreateVec( n )
-      call vec(2)%petscSetVecAll( 2.0D0 ) !!  insert second array
+      call vec(2)%petscSetVecAll( 1.0D0 ) !!  insert second array
       write(*,*) 'FIRST VECTOR: '
       call vec(1)%petscViewVec()
       write(*,*) 'SECOND VECTOR: '
@@ -65,15 +66,17 @@ CONTAINS
       !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       !! Copy the vector and print, then duplicate the same vector and print
       !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      call vec(3)%petscCopyVec( vec(1) )
+      call vec(3)%petscDupeVec( vec(1) )
       call vec(3)%petscViewVec()
       call vec(4)%petscDupeVec( vec(1) )
+      call vec(3)%petscSetVecAll( 0.0D0 ) !!  insert second array
+
       call vec(4)%petscViewVec()
 
       !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
       !! destroy the vector
       !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-      call vec(1)%petscDestroyVec()
+      call vec(4)%petscDestroyVec()
 
 
 
@@ -97,7 +100,7 @@ CONTAINS
         !! state the number of elements in the vector
         n = 10
         !! state the number of non-zero elements per row
-        nzprow = 5
+        nzprow = 3
 
         !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         !! create the input vector to be used in the test
@@ -115,7 +118,8 @@ CONTAINS
         allocate(dmat_vals(n,nzprow))
         do i = 1, nzprow
           do j = 1, n
-            dmat_vals(j, i) = j*2.0d0
+            !dmat_vals(j, i) = j*2.0d0
+            dmat_vals(j, i) = 1
           enddo
         enddo
 
@@ -132,9 +136,13 @@ CONTAINS
         !! of values, then populate next three rows, 5 columns by a dense matrix
         !! then we populate a single value in the matrix
         !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        call mat(1)%petscSetMatVals( 1, vec_index(1:nzprow), vec_vals(1:nzprow), 'insert' )
-        call mat(1)%petscSetMatVals( (/3,4,5/), vec_index(2:nzprow+1), dmat_vals(1:3,:), 'insert' )
-        call mat(1)%petscSetMatVals( 7, vec_index(7), vec_vals(10), 'insert' )
+        i = 1
+        call mat(1)%petscSetMatVals(i, (/1,2/), (/80.0d0, 20.0d0/), 'insert')
+        do i =2, n-1
+          call mat(1)%petscSetMatVals(i, (/i-1,i,i+1/), (/20.d0, 50.0d0, 20.0d0/), 'insert')
+        enddo
+        call mat(1)%petscSetMatVals(i, (/n-1, n/), (/20.0d0, 80.0d0/), 'insert')
+
         !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         !! all matrix values must be set before matrix assembly
         !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -177,7 +185,6 @@ CONTAINS
         ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         ! destroy the vector
         ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-        call mat(1)%petscDestroyMat()
         call mat(2)%petscDestroyMat()
         call mat(3)%petscDestroyMat()
 
@@ -189,5 +196,29 @@ CONTAINS
         deallocate(vec_vals)
         deallocate(vec_index)
         deallocate(dmat_vals)
+      END SUBROUTINE
+
+      SUBROUTINE KSPTest( mat, vec )
+        TYPE( PETScMatrixClass )                   ::   mat
+        TYPE( PETScVectorClass )                   ::   vec(:)
+        TYPE( PETScNumMethodsClass )               ::   ksp
+        REAL(KIND=8)                               ::   tol = 1e-9
+        INTEGER                                    ::   its = 1000
+
+
+        call mat%petscInit()
+        call ksp%petscInitKSP( tol, its )
+        call ksp%petscCreateKSP ( mat )
+        write(*,*) 'INITIAL GUESS - - - - - - - - - - - - - '
+        call vec(2)%petscViewVec()
+        call ksp%petscSolveKSP( vec(2), vec(1))
+        write(*,*) 'ITERATIVE SOLUTION - - - - - - - - - - - - - '
+        call vec(2)%petscViewVec()
+        call mat%petscMultMat( vec(2), vec(3) )
+        write(*,*) 'CALCULATED SOURCE TERM - - - - - - - - - - - - - '
+        call vec(3)%petscViewVec()
+        write(*,*) 'ORIGINAL SOURCE TERM - - - - - - - - - - - - - '
+        call vec(1)%petscViewVec() 
+
       END SUBROUTINE
 END PROGRAM

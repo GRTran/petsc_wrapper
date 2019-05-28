@@ -33,6 +33,8 @@ MODULE PETScMatrix
   USE petscsys
   USE petscmat
 
+  USE PETScVector
+
   IMPLICIT NONE
 
   TYPE PETScMatrixClass
@@ -43,11 +45,11 @@ MODULE PETScMatrix
     PROCEDURE, PUBLIC , PASS   ::    petscDupeMat
     PROCEDURE, PUBLIC , PASS   ::    petscCopyMat
     PROCEDURE, PUBLIC , PASS   ::    petscGetMatRowVals
-    PROCEDURE, PUBLIC , PASS   ::    petscRestoreMatRowVals
     GENERIC  , PUBLIC          ::    petscSetMatVals => petscSetMatRowVals, petscSetMatValsFromMat, petscSetMatRowVal
     PROCEDURE, PRIVATE, PASS   ::    petscSetMatRowVals
     PROCEDURE, PRIVATE, PASS   ::    petscSetMatValsFromMat
     PROCEDURE, PRIVATE, PASS   ::    petscSetMatRowVal
+    PROCEDURE, PUBLIC , PASS   ::    petscMultMat
     PROCEDURE, PUBLIC , PASS   ::    petscViewMat
     PROCEDURE, PUBLIC , PASS   ::    petscAssembleMat
     PROCEDURE, PUBLIC , PASS   ::    petscDestroyMat
@@ -214,23 +216,6 @@ CONTAINS
   END SUBROUTINE
 
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  !! Restores the row once it has been inspected, this must be called after
-  !! getting a particular row
-  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  SUBROUTINE petscRestoreMatRowVals ( this, idx, nzprow, cols, vals )
-    CLASS(PETScMatrixClass)            ::    this
-    INTEGER                            ::    idx
-    INTEGER                            ::    nzprow
-    INTEGER                            ::    cols( : )
-    REAL(KIND=pres) , INTENT( IN )     ::    vals( : )
-    PetscErrorCode                           ierr
-
-    ASSOCIATE ( mat => this%mat )
-        call MatRestoreRow( mat, idx, nzprow, cols, vals, ierr ); CHKERRA(ierr)
-    END ASSOCIATE
-  END SUBROUTINE
-
-  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   !! Insert a vector of values (vals) into a particular row (irow) at column
   !! indices specified by icols. the character, c determines whether to insert
   !! the values (replace existing) or add the values (simple addition).
@@ -289,6 +274,20 @@ CONTAINS
 
     ASSOCIATE ( mat => this%mat )
       call MatDestroy( mat, ierr ); CHKERRA(ierr)
+    END ASSOCIATE
+  END SUBROUTINE
+
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  !! Performs a simple matrix vector operation, Ax=b
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  SUBROUTINE petscMultMat ( this, x, y )
+    CLASS(PETScMatrixClass)            ::    this
+    TYPE(PETScVectorClass)             ::    x
+    TYPE(PETScVectorClass)             ::    y
+    PetscErrorCode                           ierr
+
+    ASSOCIATE ( mat => this%mat, vec_in => x%vec, vec_out => y%vec )
+        call MatMult( mat, vec_in, vec_out, ierr ); CHKERRA(ierr)
     END ASSOCIATE
   END SUBROUTINE
 

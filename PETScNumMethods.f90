@@ -73,13 +73,18 @@ CONTAINS
   !! Initialise KSP data such as the tolerances, maximum iterations and the
   !! required preconditioner
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-  SUBROUTINE petscInitKSP ( this )
+  SUBROUTINE petscInitKSP ( this, tol, its )
     CLASS(PETScNumMethodsClass)   ::    this
+    REAL(KIND=8)                               ::   tol
+    INTEGER                                    ::   its
+
+    this%tol = tol
+    this%max_its = its
   END SUBROUTINE
 
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   !! Builds the Kyrlov subspace solver method with the required parameters
-  !! specified in the KSP initialise subroutine
+  !! specified in the KSP initialise subroutine, where Ahold is pets matrix wrapper
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   SUBROUTINE petscCreateKSP ( this, Ahold )
     CLASS(PETScNumMethodsClass)   ::    this
@@ -101,7 +106,7 @@ CONTAINS
       !! set relevant tolerances for the KSP solver
       call KSPSetTolerances( solver, this%tol, this%tol, 10000D0, this%max_its, ierr ); CHKERRA( ierr )
       !! set the preconditioner type
-      call PCSetType( precon, TRIM(this%tprecon), ierr ); CHKERRA( ierr )
+      call PCSetType( precon, PCCHOLESKY, ierr ); CHKERRA( ierr )
     END ASSOCIATE
   END SUBROUTINE
 
