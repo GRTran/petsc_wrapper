@@ -45,8 +45,10 @@ MODULE PETScVector
     PROCEDURE, PUBLIC , PASS   ::    petscCopyVec
     PROCEDURE, PUBLIC , PASS   ::    petscDupeVec
     PROCEDURE, PUBLIC , PASS   ::    petscViewVec
-    GENERIC  , PUBLIC          ::    petscSetVec => petscSetVecVals, petscSetVecVal
-    PROCEDURE, PRIVATE, PASS   ::    petscSetVecVals, petscSetVecVal
+    PROCEDURE, PUBLIC , PASS   ::    petscGetArrayF90
+    PROCEDURE, PUBLIC , PASS   ::    petscRestoreArrayF90
+    GENERIC  , PUBLIC          ::    petscSetVec => petscSetVecVals, petscSetVecVal, petscSetVecValsFromSE
+    PROCEDURE, PRIVATE, PASS   ::    petscSetVecVals, petscSetVecVal, petscSetVecValsFromSE
     GENERIC  , PUBLIC          ::    petscGetVec => petscGetVecVals, petscGetVecVal, petscGetVecValsFromSE
     PROCEDURE, PRIVATE, PASS   ::    petscGetVecVals, petscGetVecVal, petscGetVecValsFromSE
     PROCEDURE, PUBLIC,  PASS   ::    petscGetSize
@@ -186,6 +188,36 @@ CONTAINS
   END SUBROUTINE
 
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  !! Set elements using the difference between the end (e) and start (s)
+  !! values to set are (v), this procedure has no insert / add feature
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  SUBROUTINE petscSetVecValsFromSE ( this, start, end, v )
+    CLASS(PETScVectorClass)            ::    this
+    REAL(KIND=pres) , INTENT( IN )     ::    v( : )
+    INTEGER         , INTENT( IN )     ::    start
+    INTEGER         , INTENT( IN )     ::    end
+    INTEGER                            ::    i
+    INTEGER                            ::    ni
+    INTEGER, ALLOCATABLE               ::    indices( : )
+    PetscErrorCode                           ierr
+
+    ni = end-start+1
+    ALLOCATE( indices(ni) )
+
+    !! adjustments are made for zero indexed nature of PETSc library
+    indices(1) = start - 1
+    do i = 2, ni
+      indices(i) = indices(i-1) + 1
+    enddo
+
+    ASSOCIATE ( vec => this%vec )
+        call VecSetValues( vec, ni, indices, v, INSERT_VALUES, ierr ); CHKERRA(ierr)
+    END ASSOCIATE
+
+    DEALLOCATE( indices )
+  END SUBROUTINE
+
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   !! Set all elements of a vector to a value (v)
   !! or add value (v) to value already within cell at index (i)
   !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -271,6 +303,32 @@ CONTAINS
 
     ASSOCIATE ( vec => this%vec )
         call VecGetSize( vec, s, ierr ); CHKERRA(ierr)
+    END ASSOCIATE
+  END SUBROUTINE
+
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  !! Access vector of array from fortran 90
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  SUBROUTINE petscGetArrayF90 ( this, fvec )
+    CLASS(PETScVectorClass)            ::    this
+    REAL(KIND=pres) , INTENT( OUT ), pointer    ::    fvec( : )
+    PetscErrorCode                           ierr
+
+    ASSOCIATE ( vec => this%vec )
+        call VecGetArrayF90( vec, fvec, ierr ); CHKERRA(ierr)
+    END ASSOCIATE
+  END SUBROUTINE
+
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  !! Access vector of array from fortran 90
+  !! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  SUBROUTINE petscRestoreArrayF90 ( this, fvec )
+    CLASS(PETScVectorClass)            ::    this
+    REAL(KIND=pres) , INTENT( OUT ), pointer    ::    fvec( : )
+    PetscErrorCode                           ierr
+
+    ASSOCIATE ( vec => this%vec )
+        call VecRestoreArrayF90( vec, fvec, ierr ); CHKERRA(ierr)
     END ASSOCIATE
   END SUBROUTINE
 

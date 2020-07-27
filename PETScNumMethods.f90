@@ -106,7 +106,7 @@ CONTAINS
       !! set relevant tolerances for the KSP solver
       call KSPSetTolerances( solver, this%tol, this%tol, 10000D0, this%max_its, ierr ); CHKERRA( ierr )
       !! set the preconditioner type
-      call PCSetType( precon, PCCHOLESKY, ierr ); CHKERRA( ierr )
+      call PCSetType( precon, PCICC, ierr ); CHKERRA( ierr )
     END ASSOCIATE
   END SUBROUTINE
 
