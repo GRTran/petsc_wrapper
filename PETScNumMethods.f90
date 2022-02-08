@@ -94,7 +94,7 @@ CONTAINS
 
     ASSOCIATE( solver => this%solver, A => Ahold%mat )
       !! create the Kyrlov subspace method solver
-      call KSPCreate( MPI_COMM_SELF, solver, ierr );  CHKERRA( ierr )
+      call KSPCreate( PETSC_COMM_SELF, solver, ierr );  CHKERRA( ierr )
       !! define matrix to be solved and matrix that is basis of preconditioner
       call KSPSetOperators( solver, A, A, ierr );  CHKERRA( ierr )
       !! builds the ksp for a particular solver (PCG in this case)
